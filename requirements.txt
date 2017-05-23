@@ -1,2 +1,2 @@
-PyGithub
-trufflehog
+GitPython==2.1.1
+PyGithub==1.34
