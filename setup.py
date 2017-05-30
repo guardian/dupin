@@ -5,7 +5,7 @@ from setuptools import setup
 setup(name="Dupin",
       description="Search for secrets in an Organisation's Github repositories",
       version='0.0.1',
-      packages=['dupin'],
+      packages=['dupin', 'dupin.trufflehog'],
       entry_points={
           'console_scripts': [
               'dupin = dupin.dupin:main'

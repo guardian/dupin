@@ -8,7 +8,7 @@ Dupin is a tool to help discover secrets in Git repositories.
 
 Dupin creates a directory structure for storing its results as follows.
 
-```bash
+```
  root
  ├── repository-urls
  ├── repositories
@@ -19,6 +19,13 @@ Dupin creates a directory structure for storing its results as follows.
  │       ├── ...etc contents of example-2 repo
  │       └── .git
  └── results
-     ├── example-2.git
-     └── example.git
+     ├── .git
+     ├── example-2
+     └── example
 ```
+
+## Config
+
+You can provide a config file to set some parameters for Dupin without
+needing to pass them every time. This also lets you keep secrets away
+from the git repository.

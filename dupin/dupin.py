@@ -3,45 +3,90 @@ import os
 
 from scanner import scan_repo, scan_repo_list
 from organisation import update_organisation_repos
+from history import history
+from utils import setup
+from config import Config
 
 
 parser = argparse.ArgumentParser(description="Searches an organisation's repositories for Git secrets")
-parser.add_argument("--root", help="Set the root directory for Dupin, defaults to CWD")
+parser.add_argument("--root", help="Set the root directory for Dupin (default: CWD)")
+parser.add_argument("--config", help="Set location of config file")
 subparsers = parser.add_subparsers(title="Available commands", dest="subcommand")
 
 update_repos_parser = subparsers.add_parser("update-repos", help="Lookup all the repositories for a Github organisation and update the local list",
                                       epilog="Example: dupin update-repos guardian abcdef12345")
-update_repos_parser.add_argument("org", help="The name of the organisation to search")
-update_repos_parser.add_argument("token", help="Access token for Github's API, this is used to discover the repositories")
-update_repos_parser.add_argument("--file", help="write the list of repository URLs to this file (defaults to ROOT/repository-urls)",
-                                 required=False)
+update_repos_parser.add_argument("org", help="The name of the organisation to search (default: from config)")
+update_repos_parser.add_argument("--token", help="Access token for Github's API (default: from config)")
+update_repos_parser.add_argument("--file", help="write the list of repository URLs to this file (default: ROOT/repository-urls)")
 
 scan_repo_parser = subparsers.add_parser("scan-repo", help="Look for secrets within a repository",
                                          epilog="Example: dupin scan https://github.com/guardian/dupin.git")
-scan_repo_parser.add_argument("location", help="Location of the repository to check, can be local or remote")
+scan_repo_parser.add_argument("repo-url", help="URL of the repository to check")
 
-scan_repos_parser = subparsers.add_parser("scan-repo-list", help="Search through a list of repositories, scanning each in turn",
-                                          epilog="Example: dupin search my-repos.txt")
-scan_repos_parser.add_argument("file", help="File containing a list of Git repositories to scan (as produced by `lookup`)")
+scan_repo_list_parser = subparsers.add_parser("scan-repo-list", help="Search through a list of repositories, scanning each in turn",
+                                              epilog="Example: dupin search my-repos.txt")
+scan_repo_list_parser.add_argument("--repo-urls-file", help="File containing a list of Git repositories to scan (default: ROOT/repository-urls)")
+
+history_parser = subparsers.add_parser("history", help="Generate changes for managed repositories",
+                                       description="Dupin creates a Git repository to house scan results,\nthis command controls that repo.",
+                                       epilog="Example: dupin history --notify-email test@example.com")
+history_parser.add_argument("--message", help="Commit message")
+history_parser.add_argument("--notify", action="store_true", help="Send notifications of changes (reads email from config)")
+history_parser.add_argument("--notify-email", help="Email to send notifications to (default: from config)")
+
+setup_parser = subparsers.add_parser("setup", help="Setup a Dupin root directory",
+                                     description="creates directory structure and initialises git repo for Dupin")
+
+auto_parser = subparsers.add_parser("auto-scan-all", help="Scan all known repositories",
+                                    description="Re-scan all known repositories (takes no other arguments but uses the provided root/config")
 
 
 def main():
     opts = parser.parse_args()
+
+    # shared settings
     if opts.root:
         root = opts.root
     else:
         root = os.getcwd()
+    if opts.config:
+        config = Config(opts.config)
+    else:
+        config = Config()
 
-    if "update-repos" == opts.subcommand:
-        if opts.file:
-            filename = opts.file
-        else:
+    # subcommands
+    if "setup" == opts.subcommand:
+        setup(root)
+    elif "update-repos" == opts.subcommand:
+        org = opts.org or config.organisation_name
+        token = opts.token or config.github_token
+        if opts.file is None:
             filename = os.path.join(root, "repository-urls")
-        update_organisation_repos(opts.org, opts.token, filename)
+        else:
+            filename = opts.file
+
+        update_organisation_repos(org, token, filename)
     elif "scan-repo" == opts.subcommand:
-        scan_repo(opts.location, root)
+        repo_location = opts.location
+        scan_repo(repo_location, root)
     elif "scan-repo-list" == opts.subcommand:
-        scan_repo_list(opts.file)
+        if opts.file is None:
+            repo_urls_filename = os.path.join(root, "repository-urls")
+        else:
+            repo_urls_filename = opts.file
+
+        scan_repo_list(repo_urls_filename, root)
+    elif "history" == opts.subcommand:
+        notification_email = opts.notify_email or config.notification_email
+        history_message = opts.message or "Dupin search results"
+
+        history(root, history_message, notification_email)
+    elif "auto-scan-all" == opts.subcommand:
+        repo_urls_filename = os.path.join(root, "repository-urls")
+        notification_email = config.notification_email
+
+        scan_repo_list(repo_urls_filename, root)
+        history(root, "Dupin search results", notification_email)
     return
 
 if __name__ == "__main__":

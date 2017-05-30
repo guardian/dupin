@@ -1,3 +1,4 @@
+import os
 import sys
 
 from github import Github
@@ -8,6 +9,8 @@ def update_organisation_repos(organisation, token, filename):
     cloned, writes discovered repo URLs to a local file."""
     github_client = Github(token)
     org = github_client.get_organization(organisation)
+
+    os.makedirs(os.path.basename(filename))
 
     repos = org.get_repos()
     clone_urls = _clone_urls(repos)
