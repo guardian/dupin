@@ -2,6 +2,8 @@ import os
 
 from git import Repo
 
+from utils import printerr
+
 
 def history(root, message, notification_email):
     results_dir = os.path.join(root, "results")
@@ -10,11 +12,12 @@ def history(root, message, notification_email):
     contents = repo.git.diff(cached=True)
 
     if contents:
-        print contents
         if notification_email is not None:
             # email diffs
             print("TODO: email to " + notification_email)
+        printerr("Changes to secrets detected")
+        printerr("Comitting log to repo at {location}".format(location=results_dir))
         repo.index.commit(message)
     else:
-        print("No changes")
+        printerr("No new secrets found")
     return

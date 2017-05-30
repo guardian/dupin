@@ -3,6 +3,8 @@ import sys
 
 from github import Github
 
+from utils import printerr
+
 
 def update_organisation_repos(organisation, token, filename):
     """Searches a Github organisation for repositories that can be
@@ -10,7 +12,7 @@ def update_organisation_repos(organisation, token, filename):
     github_client = Github(token)
     org = github_client.get_organization(organisation)
 
-    os.makedirs(os.path.basename(filename))
+    printerr("Looking up {org} repositories (may take some time)".format(org=organisation))
 
     repos = org.get_repos()
     clone_urls = _clone_urls(repos)

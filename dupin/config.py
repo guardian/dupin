@@ -5,9 +5,11 @@ class Config(object):
     github_token = None
     organisation_name = None
     notification_email = None
+    source_file = None
 
     def __init__(self, filename = None):
         if filename is not None:
+            self.source_file = filename
             with open(filename, "r") as f:
                 data = yaml.load(f)
                 self.github_token = data.get("github_token", None)

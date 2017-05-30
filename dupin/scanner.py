@@ -5,6 +5,7 @@ from git import Repo
 from urlparse import urlparse
 
 from trufflehog import trufflehog
+from utils import printerr
 
 
 def scan_repo(repo_url, root):
@@ -13,6 +14,8 @@ def scan_repo(repo_url, root):
     results_file_path = os.path.join(root, "results", friendly_name)
 
     repo = _checkout_if_not_present(repo_url, repos_root)
+
+    printerr("Scanning {name} for secrets".format(name=friendly_name))
     _find_secrets(repo, results_file_path)
     return
 
@@ -23,7 +26,6 @@ def scan_repo_list(filename, root):
     with open(filename, "r") as f:
         for repo_url in f:
             if repo_url:
-                print(repo_url.strip())
                 scan_repo(repo_url.strip(), root)
     return
 
@@ -34,9 +36,11 @@ def _checkout_if_not_present(repo_url, repos_root):
     """
     repo_name = os.path.basename(urlparse(repo_url).path)
     local_repo_path = os.path.join(repos_root, repo_name)
+
     if os.path.isdir(local_repo_path):
         return Repo(local_repo_path)
     else:
+        printerr("Cloning new repo {repo} into {location}".format(repo=repo_name, location=local_repo_path))
         return Repo.clone_from(repo_url, local_repo_path)
 
 def _find_secrets(repo, output_file_path):
