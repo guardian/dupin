@@ -14,7 +14,7 @@ def update_organisation_repos(organisation, token, filename):
 
     printerr("Looking up {org} repositories (may take some time)".format(org=organisation))
 
-    repos = org.get_repos()
+    repos = org.get_repos("public")
     clone_urls = _clone_urls(repos)
     with open(filename, "w") as f:
         _write_repo_list(clone_urls, f)
