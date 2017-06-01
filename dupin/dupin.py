@@ -28,18 +28,18 @@ scan_repo_list_parser = subparsers.add_parser("scan-repo-list", help="Search thr
                                               epilog="Example: dupin search my-repos.txt")
 scan_repo_list_parser.add_argument("--repo-urls-file", help="File containing a list of Git repositories to scan (default: ROOT/repository-urls)")
 
-history_parser = subparsers.add_parser("history", help="Generate changes for managed repositories",
-                                       description="Dupin creates a Git repository to house scan results,\nthis command controls that repo.",
-                                       epilog="Example: dupin history --notify-email test@example.com")
+history_parser = subparsers.add_parser("history", help="Show changes in discovered secrets for managed repositories",
+                                       description="Dupin creates a Git repository to house scan results,\nthis command controls that repo.\nIt can also send email notifications to a configured email address.",
+                                       epilog="Example: dupin history --notify")
 history_parser.add_argument("--message", help="Commit message")
-history_parser.add_argument("--notify", action="store_true", help="Send notifications of changes (reads email from config)")
-history_parser.add_argument("--notify-email", help="Email to send notifications to (default: from config)")
+history_parser.add_argument("--notify", action="store_true", help="Send notifications of changes (reads email settings from config)")
 
 setup_parser = subparsers.add_parser("setup", help="Setup a Dupin root directory",
                                      description="creates directory structure and initialises git repo for Dupin")
 
 auto_parser = subparsers.add_parser("auto-scan-all", help="Scan all known repositories",
                                     description="Re-scan all known repositories (takes no other arguments but uses the provided root/config")
+auto_parser.add_argument("--notify", action="store_true", help="Send notifications of changes (reads email settings from config)")
 
 
 def main():
@@ -86,16 +86,14 @@ def main():
 
         scan_repo_list(repo_urls_filename, root)
     elif "history" == opts.subcommand:
-        notification_email = opts.notify_email or config.notification_email
         history_message = opts.message or "Dupin search results"
 
-        history(root, history_message, notification_email)
+        history(root, history_message, opts.notify, config)
     elif "auto-scan-all" == opts.subcommand:
         repo_urls_filename = os.path.join(root, "repository-urls")
-        notification_email = config.notification_email
 
         scan_repo_list(repo_urls_filename, root)
-        history(root, "Dupin search results", notification_email)
+        history(root, "Dupin search results", opts.notify, config)
     return
 
 if __name__ == "__main__":

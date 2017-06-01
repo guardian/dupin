@@ -25,7 +25,7 @@ def scan_repo_list(filename, root):
     """
     with open(filename, "r") as f:
         for repo_url in f:
-            if repo_url:
+            if repo_url.strip():
                 scan_repo(repo_url.strip(), root)
     return
 
