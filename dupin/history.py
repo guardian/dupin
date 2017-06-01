@@ -54,7 +54,7 @@ def send_email_quick(contents, to_addr):
         smtpObj = smtplib.SMTP('localhost')
         smtpObj.sendmail("dupin@example.com", [to_addr], strip_ansi_sequences(contents))
     except smtplib.SMTPException as err:
-        printerr("Error: unable to send email")
+        printerr("Error: unable to send email, try configuring an SMTP server")
         raise err
 
 def strip_ansi_sequences(str):

@@ -18,6 +18,7 @@ def update_organisation_repos(organisation, token, filename):
     clone_urls = _clone_urls(repos)
     with open(filename, "w") as f:
         _write_repo_list(clone_urls, f)
+        printerr("Wrote list of repositories to {location}".format(location=filename))
     return
 
 
