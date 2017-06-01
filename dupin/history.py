@@ -27,7 +27,8 @@ def history(root, message, notify, config):
             else:
                 printerr("Error: Missing notification email configuration")
                 sys.exit(1)
-
+        else:
+            print(contents)
         printerr("Comitting log to repo at {location}".format(location=results_dir))
         repo.index.commit(message)
     else:
