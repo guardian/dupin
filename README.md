@@ -1,5 +1,11 @@
 # Dupin
 
+> But it is in matters beyond the limits of mere rule that
+> the skill of the analyst is evinced. He makes in silence
+> a host of observations and inferences....
+>
+> — Edgar Allan Poe, The Murders in the Rue Morgue
+
 Dupin is a tool to help discover secrets in Git repositories.
 
 It is designed to be used as a tool for regularly scanning an
