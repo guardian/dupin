@@ -129,9 +129,24 @@ alternative file.
 
 ### auto-scan-all
 
+This command scans all the repositories it finds in `ROOT/repository-urls`
+for secrets, and saves its findings. It will also generate a diff of
+these findings compared to the previous version and display this diff
+for the user. This makes it easy to spot when secrets have been
+introduced (or [removed](https://rtyley.github.io/bfg-repo-cleaner/)).
+
+If you provide the `--notify` flag, Dupin will read the provided
+configuration and email the changes in its findings.
+
+**NOTE:** Emailing secrets is a silly idea so Dupin supports PGP
+encryption of its notification emails. To enable this feature simply
+provide a PGP Public Key in the configuration (read [the config section](#PGP-key)
+for more info)
+
 Examples:
 
 ```bash
+# scans and prints changes to the console
 dupin --root ~/.dupin auto-scan-all
 ```
 ```bash
@@ -227,11 +242,16 @@ organisation_name: your-organisation
 notification_email: recipient@example.com
 smtp:
   host: smtp-server.example.com
-  # example host for AWS
-  # host: email-smtp.eu-west-1.amazonaws.com
   from: sender@example.com
   username: username
   password: password
+pgp_key: |
+  -----BEGIN PGP PUBLIC KEY BLOCK-----
+  Version: GnuPG v1
+  
+  abdefghihjklmnopqrstuvwxyz...etc
+  ...etc
+  ...etc
 ```
 
 Most of these setting can be provided as arguments to Dupin instead of
@@ -279,3 +299,23 @@ Tells Dupin what to use as the "from" address for notification emails.
 
 These settings are used to authenticate the SMTP connection. You'll get
 these when you configure your mailserver.
+
+### PGP key
+
+Sending sensitive secrets over email is a silly idea. To deal with this,
+Dupin supports PGP encryption of the email contents.
+
+You should provide a PGP public key as text. YAML supports multi-line
+strings using the `|` character like in the example above. Make sure
+the key is consistently indented. 
+
+If you are using GnuPG you can obtain the public key in the correct
+format using the following command. Other PGP applications will offer
+similar functionality for exporting public keys.
+
+```bash
+gpg --armor --export <identity/email>
+```
+
+If you provide a PGP key in the configuration, PGP encryption will be
+automatically enabled.
