@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from git import Repo
 
 from utils import printerr
+from pgp import parse_key, encrypt
 
 
 def history(root, message, notify, config):
@@ -19,11 +20,22 @@ def history(root, message, notify, config):
         if notify:
             if config.notification_email:
                 printerr("Notifying {address} of changes".format(address=config.notification_email))
+
+                if config.pgp_key is None:
+                    message = strip_ansi_sequences(contents)
+                else:
+                    pgp_key = parse_key(config.pgp_key)
+                    unencrypted = strip_ansi_sequences(contents)
+                    message = "Dupin findings encrypted using key '{identity}'\nFingerprint: {fingerprint}\n\n{data}"\
+                        .format(identity=pgp_key.userids[0].name,
+                                fingerprint=pgp_key.fingerprint,
+                                data=encrypt(unencrypted, pgp_key))
+
                 if config.smtp_configured():
-                    send_email_properly(contents, config.notification_email, config.smtp_from, config.smtp_host, config.smtp_username, config.smtp_password)
+                    send_email_properly(message, config.notification_email, config.smtp_from, config.smtp_host, config.smtp_username, config.smtp_password)
                 else:
                     printerr("No SMTP configuration discovered, attempting to send email anyway")
-                    send_email_quick(contents, config.notification_email)
+                    send_email_quick(message, config.notification_email)
             else:
                 printerr("Error: Missing notification email configuration")
                 sys.exit(1)
@@ -36,7 +48,7 @@ def history(root, message, notify, config):
     return
 
 def send_email_properly(contents, to_addr, from_addr, host, username, password):
-    msg = MIMEText(strip_ansi_sequences(contents), "plain")
+    msg = MIMEText(contents, "plain")
     msg['Subject'] = "Dupin notification"
     msg['From'] = from_addr
     msg['To'] = to_addr
@@ -52,7 +64,7 @@ def send_email_properly(contents, to_addr, from_addr, host, username, password):
 def send_email_quick(contents, to_addr):
     try:
         smtpObj = smtplib.SMTP('localhost')
-        smtpObj.sendmail("dupin@example.com", [to_addr], strip_ansi_sequences(contents))
+        smtpObj.sendmail("dupin@example.com", [to_addr], contents)
     except smtplib.SMTPException as err:
         printerr("Error: unable to send email, try configuring an SMTP server")
         raise err

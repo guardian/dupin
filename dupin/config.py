@@ -11,6 +11,8 @@ class Config(object):
     smtp_password = None
     smtp_from = None
 
+    pgp_key = None
+
     source_file = None
 
     def __init__(self, filename = None):
@@ -26,6 +28,8 @@ class Config(object):
                 self.smtp_username = data.get("smtp", {}).get("username", None)
                 self.smtp_password = data.get("smtp", {}).get("password", None)
                 self.smtp_from = data.get("smtp", {}).get("from", None)
+
+                self.pgp_key = data.get("pgp_key", None)
 
     def smtp_configured(self):
         return self.smtp_host is not None
