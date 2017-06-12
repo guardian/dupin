@@ -3,7 +3,7 @@ Description: Set up Dupin in EC2 and schedule its execution
 
 Parameters:
   AMI:
-    Description: "AMI for the underlying instance: https://aws.amazon.com/amazon-linux-ami/#Amazon_Linux_AMI_IDs"
+    Description: "AMI for the underlying instance: https://cloud-images.ubuntu.com/locator/ec2/ filter on region, hvm:ebs-ssd and xenial"
     Type: AWS::EC2::Image::Id
   VpcId:
     Description: The VPC in which Dupin will run
@@ -104,24 +104,6 @@ Resources:
 
   DupinInstance:
     Type: AWS::EC2::Instance
-    Metadata:
-      AWS::CloudFormation::Init:
-        config:
-          files:
-            /etc/cron.d/dupin-scan-repositories:
-              # scan org's repos on a daily basis at 10:30
-              mode: "000644"
-              owner: root
-              group: root
-              content: !Sub |
-                30 10 * * *  ec2-user  bash /dupin/venv/bin/dupin auto-scan-all --root /dupin --notify
-            /etc/cron.d/dupin-update-org-repos:
-              # updates the organisation's repositories every Monday at 09:00
-              mode: "000644"
-              owner: root
-              group: root
-              content: !Sub |
-                0 9 * * 1  ec2-user  bash /dupin/venv/bin/dupin update-repos --root /dupin
     Properties:
       ImageId:
         Ref: AMI
@@ -147,20 +129,14 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -ev
-          yum update -y
-          yum install -y aws-cfn-bootstrap
+          apt-get update -y
+          # non-interactive upgrade
+          DEBIAN_FRONTEND=noninteractive apt-get -y -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" upgrade
 
-          # cryptography libraries need lots of dev packages
-          yum groupinstall -y "Development Tools"
-          yum install -y git libffi-devel python-devel openssl-devel
-
-          /opt/aws/bin/cfn-init -v \
-                   --stack ${AWS::StackName} \
-                   --resource DupinInstance \
-                   --region ${AWS::Region}
-
-          # enable automatic patching of instance
-          /sbin/chkconfig --level 345 yum on; /sbin/service yum start
+          # dupin's dependencies (building crypto libraries requires dev packages)
+          apt-get install -y git python-pip python-dev libssl-dev libffi-dev
+          pip install awscli
+          pip install virtualenv
 
           # setup dupin directories
           mkdir /dupin
@@ -171,19 +147,35 @@ Resources:
           git clone https://github.com/guardian/dupin.git /dupin/src
 
           # install dupin and requirements
-          /dupin/venv/bin/pip install -r /dupin/src/requirements.txt
           /dupin/venv/bin/pip install /dupin/src
 
           # fetch config
           aws s3 cp s3://${ConfigBucket}${ConfigPath} /dupin/config
 
-          chown -R ec2-user /dupin
+          chown -R ubuntu /dupin
 
           # run dupin setup
-          su -c "/dupin/venv/bin/dupin --root /dupin setup" ec2-user
+          su -c "/dupin/venv/bin/dupin --root /dupin setup" ubuntu
 
-          # update organisation repos
-          su -c "/dupin/venv/bin/dupin --root /dupin update-repos" ec2-user
+          # scan org's repos on a daily basis at 10:30
+          cat <<SCANREPOS > /etc/cron.d/dupin-scan-repositories
+          30 10 * * *  ec2-user  bash /dupin/venv/bin/dupin auto-scan-all --root /dupin --notify
+          SCANREPOS
+
+          # updates the organisation's repositories every Monday at 09:00
+          cat <<UPDATEREPOLIST > /etc/cron.d/dupin-update-org-repos
+          0 9 * * 1  ec2-user  bash /dupin/venv/bin/dupin update-repos --root /dupin
+          UPDATEREPOLIST
+
+          # initial update of organisation repos
+          su -c "/dupin/venv/bin/dupin --root /dupin update-repos" ubuntu
+
+          # enable automatic patching of instance
+          cat <<UPDATES > /etc/apt/apt.conf.d/20auto-upgrades
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          UPDATES
+          /etc/init.d/unattended-upgrades restart
 
 Outputs:
   DupinInstance:
