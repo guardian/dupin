@@ -107,7 +107,8 @@ Resources:
     Properties:
       ImageId:
         Ref: AMI
-      InstanceType: t2.nano
+      # large repositories are very processor / memory intensive
+      InstanceType: t2.medium
       KeyName:
         Ref: KeyName
       IamInstanceProfile:
@@ -159,12 +160,12 @@ Resources:
 
           # scan org's repos on a daily basis at 10:30
           cat <<SCANREPOS > /etc/cron.d/dupin-scan-repositories
-          30 10 * * *  ec2-user  bash /dupin/venv/bin/dupin auto-scan-all --root /dupin --notify
+          30 10 * * *  ubuntu  /dupin/venv/bin/dupin --root /dupin auto-scan-all --notify > /dupin/scan-lastrun.log 2>&1
           SCANREPOS
 
           # updates the organisation's repositories every Monday at 09:00
           cat <<UPDATEREPOLIST > /etc/cron.d/dupin-update-org-repos
-          0 9 * * 1  ec2-user  bash /dupin/venv/bin/dupin update-repos --root /dupin
+          0 9 * * 1  ubuntu  /dupin/venv/bin/dupin --root /dupin update-repos > /dupin/update-lastrun.log 2>&1
           UPDATEREPOLIST
 
           # initial update of organisation repos
