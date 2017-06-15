@@ -17,7 +17,7 @@ static_guim       = re.compile('http://static\.guim\.co\.uk/static/[a-f0-9]{40}/
 def false_positive(line):
     """Returns true if this line looks like a false positive.
     Tweak these to match your own requirements!
-    (See also /tests/false_positives.py)
+    (See also /tests/test_false_positives.py)
     """
     if yarn.search(line) or data_url.search(line) or flow_sig.search(line) or \
             sys_images.search(line) or gu_video.search(line) or json_allowed_hash.search(line) or \

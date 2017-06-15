@@ -19,6 +19,8 @@ update_repos_parser = subparsers.add_parser("update-repos", help="Lookup all the
 update_repos_parser.add_argument("org", nargs='?', help="The name of the organisation to search (default: from config)")
 update_repos_parser.add_argument("--token", help="Access token for Github's API (default: from config)")
 update_repos_parser.add_argument("--file", help="write the list of repository URLs to this file (default: ROOT/repository-urls)")
+update_repos_parser.add_argument("--repo-exclusions", nargs='+',
+                                 help="Exclude matching repos from the resulting list (useful for very large repos that cannot be scanned)")
 
 scan_repo_parser = subparsers.add_parser("scan-repo", help="Look for secrets within a repository",
                                          epilog="Example: dupin scan https://github.com/guardian/dupin.git")
@@ -65,6 +67,7 @@ def main():
         setup(root)
     elif "update-repos" == opts.subcommand:
         org = opts.org or config.organisation_name
+        repo_exclusions = opts.repo_exclusions or config.repo_exclusions
         if org is None:
             update_repos_parser.print_help()
             sys.exit(1)
@@ -74,7 +77,7 @@ def main():
         else:
             filename = opts.file
 
-        update_organisation_repos(org, token, filename)
+        update_organisation_repos(org, token, filename, repo_exclusions)
     elif "scan-repo" == opts.subcommand:
         repo_location = opts.location
         scan_repo(repo_location, root)

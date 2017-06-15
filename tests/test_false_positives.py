@@ -3,9 +3,9 @@ import unittest
 
 from dupin.trufflehog.false_positives import false_positive
 
-class TestStringMethods(unittest.TestCase):
+class TestFalsePositives(unittest.TestCase):
     """Tweak these to suit your use case
-    (See also /dupin/trufflehog/false_positives.py)
+    (See also /dupin/trufflehog/test_false_positives.py)
     """
 
     def test_returns_true_for_good_strings(self):
