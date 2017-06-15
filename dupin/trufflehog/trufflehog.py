@@ -22,7 +22,6 @@ from false_positives import false_positive
 
 def main():
     parser = argparse.ArgumentParser(description='Find secrets hidden in the depths of git.')
-    parser.add_argument('--json', dest="output_json", action="store_true", help="Output in JSON")
     parser.add_argument('-o', '--output-file', dest="output_file", help="Filename to write output to (defaults to stdout)")
     parser.add_argument('git_url', type=str, help='URL for secret searching')
     args = parser.parse_args()
@@ -35,10 +34,9 @@ def main():
         with open(args.output_file, "w") as f:
             utf8_output = codecs.getwriter('utf8')
             utf8_file = utf8_output(f)
-            output = find_strings(repo, args.output_json, output_file=utf8_file)
+            find_strings(repo, output_file=utf8_file)
     else:
-        output = find_strings(repo, args.output_json)
-    project_path = output["project_path"]
+        find_strings(repo)
     shutil.rmtree(project_path, onerror=del_rw)
 
 
@@ -90,8 +88,32 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def find_strings(repo, printJson=False, output_file=sys.stdout):
-    output = {"entropicDiffs": []}
+
+def focus_diff(diffText, search):
+    """Focus diff's text on the relevant parts"""
+    prev_1 = None
+    prev_2 = None
+    context_count = 0
+    result = []
+    for line in diffText.split("\n"):
+        if search in line:
+            if prev_2 is not None:
+                result.append(prev_2)
+                prev_2 = None
+            if prev_1 is not None:
+                result.append(prev_1)
+                prev_1 = None
+            result.append(line)
+            context_count = 2
+        else:
+            if context_count > 0:
+                result.append(line)
+                context_count = context_count - 1
+            prev_2 = prev_1
+            prev_1 = line
+    return "\n".join(result)
+
+def find_strings(repo, output_file=sys.stdout):
     already_searched = set()
 
     for remote_branch in repo.remotes.origin.fetch():
@@ -120,14 +142,14 @@ def find_strings(repo, printJson=False, output_file=sys.stdout):
                         continue
                     stringsFound = []
                     lines = blob.diff.decode('utf-8', errors='replace').split("\n")
-                    for line in [l for l in lines if l.startswith("+")]:
+                    for line in (l for l in lines if l.startswith("+")):
                         if false_positive(line[1:]) is False:
                             for word in line.split():
                                 base64_strings = get_strings_of_set(word, BASE64_CHARS)
                                 hex_strings = get_strings_of_set(word, HEX_CHARS)
                                 for string in base64_strings:
                                     b64Entropy = shannon_entropy(string, BASE64_CHARS)
-                                    if b64Entropy > 4.5:
+                                    if b64Entropy > 4.5 and "abcdefghijklmnopqrstuvwxyz" not in string.lower():
                                         stringsFound.append(string)
                                         printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
                                 for string in hex_strings:
@@ -143,18 +165,14 @@ def find_strings(repo, printJson=False, output_file=sys.stdout):
                         entropicDiff['commit'] = prev_commit.message
                         entropicDiff['diff'] = blob.diff.decode('utf-8', errors='replace')
                         entropicDiff['stringsFound'] = stringsFound
-                        output["entropicDiffs"].append(entropicDiff)
-                        if printJson:
-                            print(json.dumps(output, sort_keys=True, indent=4), file=output_file)
-                        else:
-                            print(bcolors.OKGREEN + prev_commit.hexsha + bcolors.ENDC, file=output_file)
-                            print(bcolors.OKGREEN + "Date: " + commit_time + bcolors.ENDC, file=output_file)
-                            print(bcolors.OKGREEN + "Branch: " + branch_name + bcolors.ENDC, file=output_file)
-                            print(bcolors.OKGREEN + "Commit: " + prev_commit.message + bcolors.ENDC, file=output_file)
-                            print(printableDiff, file=output_file)
+                        print(bcolors.OKGREEN + prev_commit.hexsha + bcolors.ENDC, file=output_file)
+                        print(bcolors.OKGREEN + "Date: " + commit_time + bcolors.ENDC, file=output_file)
+                        print(bcolors.OKGREEN + "Branch: " + branch_name + bcolors.ENDC, file=output_file)
+                        print(bcolors.OKGREEN + "Commit: " + prev_commit.message + bcolors.ENDC, file=output_file)
+                        print(focus_diff(printableDiff, bcolors.WARNING), file=output_file)
 
             prev_commit = curr_commit
-    return output
+    return
 
 if __name__ == "__main__":
     main()

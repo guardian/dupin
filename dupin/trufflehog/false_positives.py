@@ -4,7 +4,7 @@ import re
 yarn              = re.compile('^\s*\"?resolved(?:\":)? \"(?:https|git|git\+https)://.*(?:#|/)[a-f0-9]+\"')
 data_url          = re.compile('data:\w+/[\w+-]+;[^,]*,[a-zA-Z0-9+/=]+')
 flow_sig          = re.compile('^// flow-typed signature: [a-z0-9]+$')
-sys_images        = re.compile('/sys-images/Guardian/Pix/[\w/]+/\d{4}/\d{1,2}/\d{1,2}/\d+/[\w-]+\.(?:png|jpg|jpeg)')
+sys_images        = re.compile('/sys-images/[\w/]+/\d{4}/\d{1,2}/\d{1,2}/\d+/[\w-]+\.(?:png|jpg|jpeg)')
 gu_video          = re.compile('gu-video-[0-9a-f]+')
 json_allowed_hash = re.compile('^\s*\"(?:shasum|commit|id|mediaId)\":\s*\"[0-9a-f]+\",?$')
 capi_fixture      = re.compile('^{"response":{"')
