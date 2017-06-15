@@ -18,6 +18,7 @@ import os
 import json
 import stat
 from git import Repo
+from false_positives import false_positive
 
 def main():
     parser = argparse.ArgumentParser(description='Find secrets hidden in the depths of git.')
@@ -120,19 +121,20 @@ def find_strings(repo, printJson=False, output_file=sys.stdout):
                     stringsFound = []
                     lines = blob.diff.decode('utf-8', errors='replace').split("\n")
                     for line in [l for l in lines if l.startswith("+")]:
-                        for word in line.split():
-                            base64_strings = get_strings_of_set(word, BASE64_CHARS)
-                            hex_strings = get_strings_of_set(word, HEX_CHARS)
-                            for string in base64_strings:
-                                b64Entropy = shannon_entropy(string, BASE64_CHARS)
-                                if b64Entropy > 4.5:
-                                    stringsFound.append(string)
-                                    printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
-                            for string in hex_strings:
-                                hexEntropy = shannon_entropy(string, HEX_CHARS)
-                                if hexEntropy > 3:
-                                    stringsFound.append(string)
-                                    printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
+                        if false_positive(line[1:]) is False:
+                            for word in line.split():
+                                base64_strings = get_strings_of_set(word, BASE64_CHARS)
+                                hex_strings = get_strings_of_set(word, HEX_CHARS)
+                                for string in base64_strings:
+                                    b64Entropy = shannon_entropy(string, BASE64_CHARS)
+                                    if b64Entropy > 4.5:
+                                        stringsFound.append(string)
+                                        printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
+                                for string in hex_strings:
+                                    hexEntropy = shannon_entropy(string, HEX_CHARS)
+                                    if hexEntropy > 3 and "abcdefghijklmnopqrstuvwxyz" not in string.lower():
+                                        stringsFound.append(string)
+                                        printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
                     if len(stringsFound) > 0:
                         commit_time =  datetime.datetime.fromtimestamp(prev_commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')
                         entropicDiff = {}
