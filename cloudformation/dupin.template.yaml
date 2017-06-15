@@ -1,11 +1,9 @@
-# TODO: Finish this! currently untested
-
 AWSTemplateFormatVersion: 2010-09-09
 Description: Set up Dupin in EC2 and schedule its execution
 
 Parameters:
   AMI:
-    Description: AMI for the underlying instance
+    Description: "AMI for the underlying instance: https://cloud-images.ubuntu.com/locator/ec2/ filter on region, hvm:ebs-ssd and xenial"
     Type: AWS::EC2::Image::Id
   VpcId:
     Description: The VPC in which Dupin will run
@@ -21,6 +19,12 @@ Parameters:
     Type: String
     AllowedPattern: ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$
     ConstraintDescription: Parameter should be a CIDR block e.g. "1.2.3.4/32"
+  ConfigBucket:
+    Description: Name of the S3 bucket that contains Dupin's config
+    Type: String
+  ConfigPath:
+    Description: Location of Dupin's config in the specified S3 bucket (e.g /path/to/config)
+    Type: String
 
 Mappings:
   Tags:
@@ -43,6 +47,11 @@ Resources:
         CidrIp:
           Ref: SSHAccessCidr
       SecurityGroupEgress:
+      # allow dupin to send emails over SMTP
+      - IpProtocol: tcp
+        FromPort: 25
+        ToPort: 25
+        CidrIp: 0.0.0.0/0
       # allow instance to make http requests for init
       - IpProtocol: tcp
         FromPort: 80
@@ -69,6 +78,21 @@ Resources:
             - ec2.amazonaws.com
           Action:
           - sts:AssumeRole
+      Policies:
+      - PolicyName: dupin-instance-policy
+        PolicyDocument:
+          Statement:
+          # grant read access to config file in S3
+          - Effect: Allow
+            Resource:
+              !Sub "arn:aws:s3:::${ConfigBucket}"
+            Action:
+            - s3:ListBucket
+          - Effect: Allow
+            Resource:
+              !Sub "arn:aws:s3:::${ConfigBucket}${ConfigPath}"
+            Action:
+            - s3:GetObject
       Path: /
 
   InstanceProfile:
@@ -80,32 +104,11 @@ Resources:
 
   DupinInstance:
     Type: AWS::EC2::Instance
-    Metadata:
-      AWS::CloudFormation::Init:
-        config:
-          packages:
-            yum:
-              git: []
-              python-pip: []
-          files:
-            /etc/cron.d/discover-loadupstream-instances:
-              # scan org's repos on a daily basis at 14:30
-              mode: "000644"
-              owner: root
-              group: root
-              content: !Sub |
-                30 14 * * *  ec2-user  bash dupin auto-scan-all --root /dupin --notify
-            /etc/cron.d/dupin-update-org-repos:
-              # updates the organisation's repositories every Monday at 09:00
-              mode: "000644"
-              owner: root
-              group: root
-              content: !Sub |
-                0 9 * * 1  ec2-user  bash dupin update-repos --root /dupin
     Properties:
       ImageId:
         Ref: AMI
-      InstanceType: t2.nano
+      # large repositories are very processor / memory intensive
+      InstanceType: t2.medium
       KeyName:
         Ref: KeyName
       IamInstanceProfile:
@@ -127,40 +130,55 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -ev
-          yum update -y
-          yum install -y aws-cfn-bootstrap
+          apt-get update -y
+          # non-interactive upgrade
+          DEBIAN_FRONTEND=noninteractive apt-get -y -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" upgrade
 
-          /opt/aws/bin/cfn-init -v \
-                   --stack ${AWS::StackName} \
-                   --resource DupinInstance \
-                   --region ${AWS::Region}
-
-          pip install --upgrade pip
+          # dupin's dependencies (building crypto libraries requires dev packages)
+          apt-get install -y git python-pip python-dev libssl-dev libffi-dev
+          pip install awscli
+          pip install virtualenv
 
           # setup dupin directories
           mkdir /dupin
+          virtualenv /dupin/venv
+          /dupin/venv/bin/pip install --upgrade pip
 
           # fetch dupin
-          git clone git@github.com:guardian/dupin.git /dupin/dupin-src
+          git clone https://github.com/guardian/dupin.git /dupin/src
 
           # install dupin and requirements
-          pip install /dupin/dupin-src
+          /dupin/venv/bin/pip install /dupin/src
 
           # fetch config
-          aws s3 cp !!TODO!! /dupin/config
+          aws s3 cp s3://${ConfigBucket}${ConfigPath} /dupin/config
 
-          chown -R ec2-user /dupin
+          chown -R ubuntu /dupin
 
           # run dupin setup
-          su -c "dupin --root /dupin setup" ec2-user
+          su -c "/dupin/venv/bin/dupin --root /dupin setup" ubuntu
 
-          # update organisation repos
-          su -c "dupin --root /dupin update-repos" ec2-user
+          # scan org's repos on a daily basis at 10:30
+          cat <<SCANREPOS > /etc/cron.d/dupin-scan-repositories
+          30 10 * * *  ubuntu  /dupin/venv/bin/dupin --root /dupin auto-scan-all --notify > /dupin/scan-lastrun.log 2>&1
+          SCANREPOS
 
-          # enable automatic patching
-          /sbin/chkconfig --level 345 yum on; /sbin/service yum start
+          # updates the organisation's repositories every Monday at 09:00
+          cat <<UPDATEREPOLIST > /etc/cron.d/dupin-update-org-repos
+          0 9 * * 1  ubuntu  /dupin/venv/bin/dupin --root /dupin update-repos > /dupin/update-lastrun.log 2>&1
+          UPDATEREPOLIST
+
+          # initial update of organisation repos
+          su -c "/dupin/venv/bin/dupin --root /dupin update-repos" ubuntu
+
+          # enable automatic patching of instance
+          cat <<UPDATES > /etc/apt/apt.conf.d/20auto-upgrades
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          UPDATES
+          /etc/init.d/unattended-upgrades restart
 
 Outputs:
-  DupinInstanceIP:
+  DupinInstance:
     Value:
       !GetAtt DupinInstance.PublicDnsName
