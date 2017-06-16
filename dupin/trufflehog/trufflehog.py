@@ -7,18 +7,20 @@
 
 from __future__ import print_function
 
-import codecs
-import shutil
-import sys
-import math
-import datetime
 import argparse
-import tempfile
+import codecs
+import datetime
+import itertools
+import math
 import os
+import shutil
 import stat
+import sys
+import tempfile
 from git import Repo
+
 from false_positives import false_positive
-from dupin.utils import printerr
+
 
 def main():
     parser = argparse.ArgumentParser(description='Find secrets hidden in the depths of git.')
@@ -88,7 +90,6 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-
 def focus_diff(diffText, search):
     """Focus diff's text on the relevant parts"""
     prev_1 = None
@@ -98,10 +99,10 @@ def focus_diff(diffText, search):
     for line in diffText.split("\n"):
         if search in line:
             if prev_2 is not None:
-                result.append(prev_2)
+                result.append(truncate(prev_2, 80))
                 prev_2 = None
             if prev_1 is not None:
-                result.append(prev_1)
+                result.append(truncate(prev_1, 80))
                 prev_1 = None
             result.append(line)
             context_count = 2
@@ -113,15 +114,19 @@ def focus_diff(diffText, search):
             prev_1 = line
     return "\n".join(result)
 
+def truncate(string, length, ellipsis=" [...]"):
+    if len(string) > length:
+        return string[:length] + ellipsis
+    else:
+        return string
+
 def find_strings(repo, output_file=sys.stdout):
     already_searched = set()
-    # for remote_branch in itertools.chain(["origin/master"], repo.remotes.origin.fetch()):
-    for remote_branch in repo.remotes.origin.fetch():
+    for remote_branch in itertools.chain(["origin/master"], repo.remotes.origin.fetch()):
         branch_name = str(remote_branch).split('/')[1]
         try:
             repo.git.checkout(remote_branch, b=branch_name)
         except:
-            printerr("Could not check out remote branch {remote_branch}".format(remote_branch=remote_branch))
             continue
         for commit in repo.iter_commits():
             hash = str(commit)
@@ -132,9 +137,9 @@ def find_strings(repo, output_file=sys.stdout):
             # don't search diff for merge commits
             if len(commit.parents) == 1:
                 diff = commit.parents[0].diff(commit, create_patch=True)
-                diffs = search_diff(diff)
-                if len(diffs) > 0:
-                    print_diff_details(diffs, commit, branch_name, output_file)
+                diffsAndpaths = search_diff(diff)
+                if len(diffsAndpaths) > 0:
+                    print_diff_details(diffsAndpaths, commit, branch_name, output_file)
     return
 
 def search_diff(diff):
@@ -161,18 +166,18 @@ def search_diff(diff):
                             stringsFound = True
                             printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
         if stringsFound:
-            printableDiffs.append(printableDiff)
+            printableDiffs.append((printableDiff, blob.b_path))
 
     return printableDiffs
 
-def print_diff_details(diffs, commit, branch, output_file):
+def print_diff_details(diffsAndPaths, commit, branch, output_file):
     commit_time =  datetime.datetime.fromtimestamp(commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')
     print(bcolors.OKGREEN + commit.hexsha + bcolors.ENDC, file=output_file)
     print(bcolors.OKGREEN + "Date: " + commit_time + bcolors.ENDC, file=output_file)
     print(bcolors.OKGREEN + "Branch: " + branch + bcolors.ENDC, file=output_file)
     print(bcolors.OKGREEN + "Commit: " + commit.message + bcolors.ENDC, file=output_file)
-    for diff in diffs:
-        print(focus_diff(diff, bcolors.WARNING), file=output_file)
+    for diff, path in diffsAndPaths:
+        print("+++ {path}\n".format(path=path) + focus_diff(diff, bcolors.WARNING), file=output_file)
 
 
 if __name__ == "__main__":
