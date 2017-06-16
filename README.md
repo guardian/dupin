@@ -120,12 +120,28 @@ dupin update-repos myorg --token abcdef
 # save the list of repositories in a provided location
 dupin update-repos --file /tmp/organisation-repos.txt
 ```
+```bash
+# exclude some very large repositories from the scan
+dupin update-repos myorg --repo-exclusions organisation/large-repo.git
+```
 
 #### `--file`
 
 By default it writes to `ROOT/repository-urls` (you'll need to provide
 a `--root` argument to take advantage of this). You can specify an
 alternative file.
+
+#### `--repo-exclusions`
+
+This setting specifies Git repositories that should be excluded from the
+resulting list.
+
+Very large Git repositories cannot easily be scanned by TruffleHog, and
+therefor by Dupin. The resulting log file will likely be too large
+because of false positives and the scan itself will likely consume too
+much memory. You should use this option (or the corresponding config
+property) to exclude large repositories and use a different approach to
+check for secrets in those repositories.
 
 ### auto-scan-all
 
@@ -240,6 +256,9 @@ works.
 github_token: xxxxxxxx-github-token-xxxxxxxx
 organisation_name: your-organisation
 notification_email: recipient@example.com
+repo_exclusions:
+  - organisation/large-repo.git
+  - org2/another-excluded-repo.git
 smtp:
   host: smtp-server.example.com
   from: sender@example.com
@@ -278,6 +297,16 @@ repositories that should be scanned.
 
 Dupin uses this as a "to" address when it emails updates to your
 organisation's secrets.
+
+### Repository exclusions
+
+This property allows you to exclude specified Git repositories from
+the list of repos that will be scanned. This is particularly useful
+if you have some very large repositories that Dupin is unable to scan.
+
+The exclusions should be provided as a YAML list. Any repository that
+matches any of the provided strings will be excluded, so be specific
+(you should probably include .git at the end where possible).
 
 ### SMTP
 
@@ -319,3 +348,18 @@ gpg --armor --export <identity/email>
 
 If you provide a PGP key in the configuration, PGP encryption will be
 automatically enabled.
+
+## Development
+
+To run Dupin's tests, set up your virtualenv and install Dupin's
+requirements using the provided `requirements.txt` file. You can
+then use unittest in `discover` mode to run all the tests.
+
+```bash
+# your choice of virtualenv location
+VENV=.venv
+
+virtualenv $VENV
+$VENV/bin/pip install -r requirements.txt
+$VENV/bin/python -m unittest discover
+```

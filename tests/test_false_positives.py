@@ -3,9 +3,9 @@ import unittest
 
 from dupin.trufflehog.false_positives import false_positive
 
-class TestStringMethods(unittest.TestCase):
+class TestFalsePositives(unittest.TestCase):
     """Tweak these to suit your use case
-    (See also /dupin/trufflehog/false_positives.py)
+    (See also /dupin/trufflehog/test_false_positives.py)
     """
 
     def test_returns_true_for_good_strings(self):
@@ -34,6 +34,7 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(false_positive('        <img class="this-is-the-nhs__hand this-is-the-nhs__hand--left" src="@Configuration.static.path/sys-images/Guardian/Pix/pictures/2016/1/7/1452167267487/handleftcompressor.png" />'))
         self.assertTrue(false_positive('      Item700.bestFor(image) should be (Some(s"$imageHost/img/static/sys-images/Guardian/Pix/pictures/2013/7/5/1373023097878/b6a5a492-cc18-4f30-9809-88467e07ebfa-460x276.jpeg?w=700&q=55&auto=format&usm=12&fit=max&s=1e7d3c46056f162deec921e3c21de647"))'))
         self.assertTrue(false_positive('          endWith("img/static/sys-images/Guardian/Pix/audio/video/2014/5/16/1400240928538/Nigel-Farage-LBC-debate-i-014.jpg?w=640&h=360&q=85&auto=format&sharp=10&s=642bf1757bcb095c924d2f3789857019")'))
+        self.assertTrue(false_positive('        "file":"http://static.guim.co.uk/sys-images/Guardian/About/General/2013/3/12/1363100797848/Meanwhile-back-in-the-liv-002.jpg",'))
 
     def test_gu_video(self):
         self.assertTrue(false_positive("        var desiredVideos = ['gu-video-111111111', 'gu-video-111111111111111111111111'];"))

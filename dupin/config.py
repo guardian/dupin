@@ -5,6 +5,7 @@ class Config(object):
     github_token = None
     organisation_name = None
     notification_email = None
+    repo_exclusions = None
 
     smtp_host = None
     smtp_username = None
@@ -23,6 +24,7 @@ class Config(object):
                 self.github_token = data.get("github_token", None)
                 self.organisation_name = data.get("organisation_name", None)
                 self.notification_email = data.get("notification_email", None)
+                self.repo_exclusions = data.get("repo_exclusions", None)
 
                 self.smtp_host = data.get("smtp", {}).get("host", None)
                 self.smtp_username = data.get("smtp", {}).get("username", None)
