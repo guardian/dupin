@@ -35,6 +35,8 @@ class TestFalsePositives(unittest.TestCase):
         self.assertTrue(false_positive('      Item700.bestFor(image) should be (Some(s"$imageHost/img/static/sys-images/Guardian/Pix/pictures/2013/7/5/1373023097878/b6a5a492-cc18-4f30-9809-88467e07ebfa-460x276.jpeg?w=700&q=55&auto=format&usm=12&fit=max&s=1e7d3c46056f162deec921e3c21de647"))'))
         self.assertTrue(false_positive('          endWith("img/static/sys-images/Guardian/Pix/audio/video/2014/5/16/1400240928538/Nigel-Farage-LBC-debate-i-014.jpg?w=640&h=360&q=85&auto=format&sharp=10&s=642bf1757bcb095c924d2f3789857019")'))
         self.assertTrue(false_positive('        "file":"http://static.guim.co.uk/sys-images/Guardian/About/General/2013/3/12/1363100797848/Meanwhile-back-in-the-liv-002.jpg",'))
+        self.assertTrue(false_positive('        "body":"<figure class=\"element element-image\" data-media-id=\"gu-fc-a62f7cac-ecaa-4f02-85fc-87e5180d1cd4\"> <img src=\"http://static.guim.co.uk/sys-images/Guardian/Pix/pictures/2014/2/18/1392725397621/af5b58bc-f5aa-4de0-81d4-ba72ac0268c3-620x413.jpeg\" alt=\"3B6CB11A1F3BBFC965585C80761473_h416_w622_m2_q80_cKYLtYOZd.jpg specgallery\" width=\"620\" height=\"413\" class=\"gu-image\" /> <figcaption>Photography 101: It’s all about framing the shot … </figcaption> </figure> <figure class=\"element element-image\" data-media-id=\"gu-fc-c0d9d5d1-35d4-429e-9eb7-22eea30ff4f9\"> <img src=\"http://static.guim.co.uk/sys-images/Guardian/Pix/pictures/2014/2/18/1392724770988/10abb3d2-91ad-4247-bbdc-f49e91892374-620x413.jpeg\" alt=\"It\'s not always easy being a fan of Team GB. This one is watching GB\'s men\'s team lose to China during the round robin stage of the curling competition.\" width=\"620\" height=\"413\" class=\"gu-image\" /> <figcaption>It\'s not always easy being a fan. This one seems rather embarrassed by Team GB’s defeat to China during the round-robin stage of the curling competition. Photograph: Craig Mercer/ActionPlus/Corbis<'))
+        self.assertTrue(false_positive('        "file":"http://static.guim.co.uk/sys-images/Guardian/About/General/2013/4/19/1366393758584/No-you-cant-have-a-go-...-009.jpg",'))
 
     def test_gu_video(self):
         self.assertTrue(false_positive("        var desiredVideos = ['gu-video-111111111', 'gu-video-111111111111111111111111'];"))
@@ -58,6 +60,7 @@ class TestFalsePositives(unittest.TestCase):
     def test_static_guim(self):
         self.assertTrue(false_positive('    <script src="http://static.guim.co.uk/static/1d5811c93d9b815024b5a6c3ec93a54be18e52f0/common/external-scripts/html5enable.js"></script>'))
         self.assertTrue(false_positive('            <a href="http://www.theguardian.com/uk"><img src="http://static.guim.co.uk/static/1d5811c93d9b815024b5a6c3ec93a54be18e52f0/common/images/logos/the-guardian/life-and-style.gif" width="115" height="22" alt="The Guardian home"></a>'))
+        self.assertTrue(false_positive('          "secureFile":"https://static-secure.guim.co.uk/sys-images/Guardian/Pix/pictures/2013/2/22/1361534470863/Black-Mirror.-009.jpg",'))
 
     def test_github_reference(self):
         self.assertTrue(false_positive('[Read the Fronts architecture here](https://github.com/guardian/frontend/blob/14422b4537165424e70a898d150db4e806ba04d6/docs/02-architecture/02-fronts-architecture.md).'))
@@ -65,6 +68,10 @@ class TestFalsePositives(unittest.TestCase):
 
     def test_blend64(self):
         self.assertTrue(false_positive('        val imageOverlay = "&bm=normal&ba=bottom%2C%20left&bw=350&bp=20&blend64=aHR1cDovL1MxNC5wb3N0aW1nLm9yZy80YnA4cDJ4cjUvV2hpdGVfbG9nb193aXRoX3NoYWRvdy5wbmc"'))
+        self.assertTrue(false_positive('  val blendImageParam = "blend64=aHR1cHM1Ly11cGxvYWRzLmd1aW0uY28udWsvMjAxNi8wNi8wNy9vdmVybGF5LWxvZ28tMTIwMC05MF9vcHQucG5n"'))
+
+    def test_cdn_guardian_tv(self):
+        self.assertTrue(false_positive('            "thumbnailImageUrl":"http://cdn.theguardian.tv/mainwebsite/thumb/2013/6/25/130625TurkeyCouncilEU_7763853.jpg",'))
         self.assertTrue(false_positive('  val blendImageParam = "blend64=aHR1cHM1Ly11cGxvYWRzLmd1aW0uY28udWsvMjAxNi8wNi8wNy9vdmVybGF5LWxvZ28tMTIwMC05MF9vcHQucG5n"'))
 
 if __name__ == '__main__':
