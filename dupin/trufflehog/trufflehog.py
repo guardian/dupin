@@ -8,7 +8,6 @@
 from __future__ import print_function
 
 import codecs
-import itertools
 import shutil
 import sys
 import math
@@ -19,6 +18,7 @@ import os
 import stat
 from git import Repo
 from false_positives import false_positive
+from dupin.utils import printerr
 
 def main():
     parser = argparse.ArgumentParser(description='Find secrets hidden in the depths of git.')
@@ -115,33 +115,26 @@ def focus_diff(diffText, search):
 
 def find_strings(repo, output_file=sys.stdout):
     already_searched = set()
-
     # for remote_branch in itertools.chain(["origin/master"], repo.remotes.origin.fetch()):
     for remote_branch in repo.remotes.origin.fetch():
         branch_name = str(remote_branch).split('/')[1]
         try:
             repo.git.checkout(remote_branch, b=branch_name)
         except:
-            pass
-
-        prev_commit = None
-        for curr_commit in repo.iter_commits():
-            if not prev_commit:
-                pass
-            else:
-                #avoid searching the same diffs
-                hashes = str(prev_commit) + str(curr_commit)
-                if hashes in already_searched:
-                    prev_commit = curr_commit
-                    continue
-                already_searched.add(hashes)
-
-                diff = prev_commit.diff(curr_commit, create_patch=True)
+            printerr("Could not check out remote branch {remote_branch}".format(remote_branch=remote_branch))
+            continue
+        for commit in repo.iter_commits():
+            hash = str(commit)
+            if hash in already_searched:
+                # avoid searching the same diffs
+                continue
+            already_searched.add(hash)
+            # don't search diff for merge commits
+            if len(commit.parents) == 1:
+                diff = commit.parents[0].diff(commit, create_patch=True)
                 diffs = search_diff(diff)
                 if len(diffs) > 0:
-                    print_diff_details(diffs, prev_commit, branch_name, output_file)
-
-            prev_commit = curr_commit
+                    print_diff_details(diffs, commit, branch_name, output_file)
     return
 
 def search_diff(diff):
