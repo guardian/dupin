@@ -8,6 +8,7 @@
 from __future__ import print_function
 
 import codecs
+import itertools
 import shutil
 import sys
 import math
@@ -15,7 +16,6 @@ import datetime
 import argparse
 import tempfile
 import os
-import json
 import stat
 from git import Repo
 from false_positives import false_positive
@@ -116,6 +116,7 @@ def focus_diff(diffText, search):
 def find_strings(repo, output_file=sys.stdout):
     already_searched = set()
 
+    # for remote_branch in itertools.chain(["origin/master"], repo.remotes.origin.fetch()):
     for remote_branch in repo.remotes.origin.fetch():
         branch_name = str(remote_branch).split('/')[1]
         try:
@@ -136,43 +137,50 @@ def find_strings(repo, output_file=sys.stdout):
                 already_searched.add(hashes)
 
                 diff = prev_commit.diff(curr_commit, create_patch=True)
-                for blob in diff:
-                    printableDiff = blob.diff.decode('utf-8', errors='replace')
-                    if printableDiff.startswith("Binary files"):
-                        continue
-                    stringsFound = []
-                    lines = blob.diff.decode('utf-8', errors='replace').split("\n")
-                    for line in (l for l in lines if l.startswith("+")):
-                        if false_positive(line[1:]) is False:
-                            for word in line.split():
-                                base64_strings = get_strings_of_set(word, BASE64_CHARS)
-                                hex_strings = get_strings_of_set(word, HEX_CHARS)
-                                for string in base64_strings:
-                                    b64Entropy = shannon_entropy(string, BASE64_CHARS)
-                                    if b64Entropy > 4.5 and "abcdefghijklmnopqrstuvwxyz" not in string.lower():
-                                        stringsFound.append(string)
-                                        printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
-                                for string in hex_strings:
-                                    hexEntropy = shannon_entropy(string, HEX_CHARS)
-                                    if hexEntropy > 3 and "abcdefghijklmnopqrstuvwxyz" not in string.lower():
-                                        stringsFound.append(string)
-                                        printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
-                    if len(stringsFound) > 0:
-                        commit_time =  datetime.datetime.fromtimestamp(prev_commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')
-                        entropicDiff = {}
-                        entropicDiff['date'] = commit_time
-                        entropicDiff['branch'] = branch_name
-                        entropicDiff['commit'] = prev_commit.message
-                        entropicDiff['diff'] = blob.diff.decode('utf-8', errors='replace')
-                        entropicDiff['stringsFound'] = stringsFound
-                        print(bcolors.OKGREEN + prev_commit.hexsha + bcolors.ENDC, file=output_file)
-                        print(bcolors.OKGREEN + "Date: " + commit_time + bcolors.ENDC, file=output_file)
-                        print(bcolors.OKGREEN + "Branch: " + branch_name + bcolors.ENDC, file=output_file)
-                        print(bcolors.OKGREEN + "Commit: " + prev_commit.message + bcolors.ENDC, file=output_file)
-                        print(focus_diff(printableDiff, bcolors.WARNING), file=output_file)
+                diffs = search_diff(diff)
+                if len(diffs) > 0:
+                    print_diff_details(diffs, prev_commit, branch_name, output_file)
 
             prev_commit = curr_commit
     return
+
+def search_diff(diff):
+    printableDiffs = []
+    for blob in diff:
+        stringsFound = False
+        printableDiff = blob.diff.decode('utf-8', errors='replace')
+        if printableDiff.startswith("Binary files"):
+            continue
+        lines = blob.diff.decode('utf-8', errors='replace').split("\n")
+        for line in (l for l in lines if l.startswith("+")):
+            if false_positive(line[1:]) is False:
+                for word in line.split():
+                    base64_strings = get_strings_of_set(word, BASE64_CHARS)
+                    hex_strings = get_strings_of_set(word, HEX_CHARS)
+                    for string in base64_strings:
+                        b64Entropy = shannon_entropy(string, BASE64_CHARS)
+                        if b64Entropy > 4.5 and "abcdefghijklmnopqrstuvwxyz" not in string.lower():
+                            stringsFound = True
+                            printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
+                    for string in hex_strings:
+                        hexEntropy = shannon_entropy(string, HEX_CHARS)
+                        if hexEntropy > 3 and "abcdefghijklmnopqrstuvwxyz" not in string.lower():
+                            stringsFound = True
+                            printableDiff = printableDiff.replace(string, bcolors.WARNING + string + bcolors.ENDC)
+        if stringsFound:
+            printableDiffs.append(printableDiff)
+
+    return printableDiffs
+
+def print_diff_details(diffs, commit, branch, output_file):
+    commit_time =  datetime.datetime.fromtimestamp(commit.committed_date).strftime('%Y-%m-%d %H:%M:%S')
+    print(bcolors.OKGREEN + commit.hexsha + bcolors.ENDC, file=output_file)
+    print(bcolors.OKGREEN + "Date: " + commit_time + bcolors.ENDC, file=output_file)
+    print(bcolors.OKGREEN + "Branch: " + branch + bcolors.ENDC, file=output_file)
+    print(bcolors.OKGREEN + "Commit: " + commit.message + bcolors.ENDC, file=output_file)
+    for diff in diffs:
+        print(focus_diff(diff, bcolors.WARNING), file=output_file)
+
 
 if __name__ == "__main__":
     main()
