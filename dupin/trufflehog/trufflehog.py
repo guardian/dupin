@@ -177,7 +177,7 @@ def print_diff_details(diffsAndPaths, commit, branch, output_file):
     print(bcolors.OKGREEN + "Branch: " + branch + bcolors.ENDC, file=output_file)
     print(bcolors.OKGREEN + "Commit: " + commit.message + bcolors.ENDC, file=output_file)
     for diff, path in diffsAndPaths:
-        print("+++ {path}\n".format(path=path) + focus_diff(diff, bcolors.WARNING), file=output_file)
+        print("{BLUE}+++ {path}{RESET}\n".format(BLUE=bcolors.OKBLUE, path=path, RESET=bcolors.ENDC) + focus_diff(diff, bcolors.WARNING), file=output_file)
 
 
 if __name__ == "__main__":
