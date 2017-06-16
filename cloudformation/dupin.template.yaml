@@ -158,14 +158,14 @@ Resources:
           # run dupin setup
           su -c "/dupin/venv/bin/dupin --root /dupin setup" ubuntu
 
-          # scan org's repos on a daily basis at 10:30
+          # scan org's repos every weekday (Mon-Fri) at 09:30
           cat <<SCANREPOS > /etc/cron.d/dupin-scan-repositories
-          30 10 * * *  ubuntu  /dupin/venv/bin/dupin --root /dupin auto-scan-all --notify > /dupin/scan-lastrun.log 2>&1
+          30 9 * * 1-5  ubuntu  /dupin/venv/bin/dupin --root /dupin auto-scan-all --notify > /dupin/scan-lastrun.log 2>&1
           SCANREPOS
 
-          # updates the organisation's repositories every Monday at 09:00
+          # updates the organisation's repositories every Monday at 08:00
           cat <<UPDATEREPOLIST > /etc/cron.d/dupin-update-org-repos
-          0 9 * * 1  ubuntu  /dupin/venv/bin/dupin --root /dupin update-repos > /dupin/update-lastrun.log 2>&1
+          0 8 * * 1  ubuntu  /dupin/venv/bin/dupin --root /dupin update-repos > /dupin/update-lastrun.log 2>&1
           UPDATEREPOLIST
 
           # initial update of organisation repos
