@@ -3,6 +3,7 @@
 
 # Modified version of trufflehog, for detecting secrets in
 # the history of git repositories.
+# https://github.com/dxa4481/truffleHog
 
 
 from __future__ import print_function
@@ -18,6 +19,7 @@ import stat
 import sys
 import tempfile
 from git import Repo
+from git.diff import NULL_TREE
 
 from false_positives import false_positive
 
@@ -127,16 +129,28 @@ def find_strings(repo, output_file=sys.stdout):
         try:
             repo.git.checkout(remote_branch, b=branch_name)
         except:
+            print("Failed to check out {branch}".format(branch=remote_branch), file=sys.stderr)
             continue
         for commit in repo.iter_commits():
             hash = str(commit)
             if hash in already_searched:
-                # avoid searching the same diffs
+                # avoid searching diffs we've already seen
                 continue
-            already_searched.add(hash)
-            # don't search diff for merge commits
-            if len(commit.parents) == 1:
-                diff = commit.parents[0].diff(commit, create_patch=True)
+            else:
+                already_searched.add(hash)
+
+            if len(commit.parents) > 1:
+                # don't search diff for merge commits
+                pass
+            else:
+                diff = []
+                if len(commit.parents) == 0:
+                    # initial commit is special case
+                    diff = commit.diff(NULL_TREE, create_patch=True)
+                elif len(commit.parents) == 1:
+                    # compare with parent commit's state
+                    diff = commit.parents[0].diff(commit, create_patch=True)
+
                 diffsAndpaths = search_diff(diff)
                 if len(diffsAndpaths) > 0:
                     print_diff_details(diffsAndpaths, commit, branch_name, output_file)
@@ -177,7 +191,9 @@ def print_diff_details(diffsAndPaths, commit, branch, output_file):
     print(bcolors.OKGREEN + "Branch: " + branch + bcolors.ENDC, file=output_file)
     print(bcolors.OKGREEN + "Commit: " + commit.message + bcolors.ENDC, file=output_file)
     for diff, path in diffsAndPaths:
-        print("{BLUE}+++ {path}{RESET}\n".format(BLUE=bcolors.OKBLUE, path=path, RESET=bcolors.ENDC) + focus_diff(diff, bcolors.WARNING), file=output_file)
+        focused_diff = focus_diff(diff, bcolors.WARNING)
+        print("{BLUE}+++ {path}{RESET}\n{diff}".format(path=path, diff=focused_diff, BLUE=bcolors.OKBLUE, RESET=bcolors.ENDC),
+              file=output_file)
 
 
 if __name__ == "__main__":
