@@ -6,6 +6,7 @@ class Config(object):
     organisation_name = None
     notification_email = None
     repo_exclusions = None
+    include_forks = None
 
     smtp_host = None
     smtp_username = None
@@ -25,6 +26,7 @@ class Config(object):
                 self.organisation_name = data.get("organisation_name", None)
                 self.notification_email = data.get("notification_email", None)
                 self.repo_exclusions = data.get("repo_exclusions", None)
+                self.include_forks = data.get("include_forks", None)
 
                 self.smtp_host = data.get("smtp", {}).get("host", None)
                 self.smtp_username = data.get("smtp", {}).get("username", None)

@@ -19,6 +19,8 @@ update_repos_parser = subparsers.add_parser("update-repos", help="Lookup all the
 update_repos_parser.add_argument("org", nargs='?', help="The name of the organisation to search (default: from config)")
 update_repos_parser.add_argument("--token", help="Access token for Github's API (default: from config)")
 update_repos_parser.add_argument("--file", help="write the list of repository URLs to this file (default: ROOT/repository-urls)")
+update_repos_parser.add_argument("--include-forks", action="store_true",
+                                 help="By default Dupin excludes repositories that are 'forks', this flag changes that setting")
 update_repos_parser.add_argument("--repo-exclusions", nargs='+',
                                  help="Exclude matching repos from the resulting list (useful for very large repos that cannot be scanned)")
 
@@ -72,12 +74,13 @@ def main():
             update_repos_parser.print_help()
             sys.exit(1)
         token = opts.token or config.github_token
+        include_forks = opts.include_forks or config.include_forks or False
         if opts.file is None:
             filename = os.path.join(root, "repository-urls")
         else:
             filename = opts.file
 
-        update_organisation_repos(org, token, filename, repo_exclusions)
+        update_organisation_repos(org, token, filename, repo_exclusions, include_forks)
     elif "scan-repo" == opts.subcommand:
         repo_location = opts.location
         scan_repo(repo_location, root)

@@ -6,7 +6,7 @@ from github import Github
 from utils import printerr
 
 
-def update_organisation_repos(organisation, token, filename, excludes):
+def update_organisation_repos(organisation, token, filename, excludes, include_forks):
     """Searches a Github organisation for repositories that can be
     cloned, writes discovered repo URLs to a local file."""
     github_client = Github(token)
@@ -15,6 +15,8 @@ def update_organisation_repos(organisation, token, filename, excludes):
     printerr("Looking up {org} repositories (may take some time)".format(org=organisation))
 
     repos = org.get_repos("public")
+    if not include_forks:
+        repos = (repo for repo in repos if not repo.fork)
     clone_urls = _clone_urls(repos)
     filtered = filter_excluded_repos(clone_urls, excludes)
     with open(filename, "w") as f:

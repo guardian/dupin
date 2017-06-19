@@ -131,6 +131,13 @@ By default it writes to `ROOT/repository-urls` (you'll need to provide
 a `--root` argument to take advantage of this). You can specify an
 alternative file.
 
+#### `--include-forks`
+
+By default, Dupin will not include repositories that are forks. These
+tend to contain only minor changes and the source repository is often
+very large. Dupin's aim is to try and find secrets in an organisation's
+repositories, if you'd like to include forks you should pass this flag.
+
 #### `--repo-exclusions`
 
 This setting specifies Git repositories that should be excluded from the
@@ -256,6 +263,7 @@ works.
 github_token: xxxxxxxx-github-token-xxxxxxxx
 organisation_name: your-organisation
 notification_email: recipient@example.com
+include_forks: true
 repo_exclusions:
   - organisation/large-repo.git
   - org2/another-excluded-repo.git
@@ -297,6 +305,13 @@ repositories that should be scanned.
 
 Dupin uses this as a "to" address when it emails updates to your
 organisation's secrets.
+
+### Include forks
+
+As described abve, Dupin will not include repositories that are forks.
+If you'd like to include forks in the generated list of repositories,
+you can specify this from Dupin's config by setting `include_forks` to
+`true`.
 
 ### Repository exclusions
 
