@@ -192,7 +192,7 @@ def print_diff_details(diffsAndPaths, commit, branch, output_file):
     print(bcolors.OKGREEN + "Commit: " + commit.message + bcolors.ENDC, file=output_file)
     for diff, path in diffsAndPaths:
         focused_diff = focus_diff(diff, bcolors.WARNING)
-        print("{BLUE}+++ {path}{RESET}\n{diff}".format(path=path, diff=focused_diff, BLUE=bcolors.OKBLUE, RESET=bcolors.ENDC),
+        print(u"{BLUE}+++ {path}{RESET}\n{diff}".format(path=path, diff=focused_diff, BLUE=bcolors.OKBLUE, RESET=bcolors.ENDC),
               file=output_file)
 
 
