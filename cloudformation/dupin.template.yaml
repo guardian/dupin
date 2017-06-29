@@ -14,6 +14,10 @@ Parameters:
   KeyName:
     Description: An ssh keypair to put on the nginx instance
     Type: AWS::EC2::KeyPair::KeyName
+  DiskSize:
+    Description: Disk size for storing Dupin's data in GB (make sure it can check out all your repos without filling up)
+    Type: Number
+    Default: 20
   SSHAccessCidr:
     Description: A CIDR from which SSH access to the nginx instance is allowed
     Type: String
@@ -120,6 +124,13 @@ Resources:
           Ref: Subnet
         GroupSet:
         - Ref: DupinInstanceSecurityGroup
+      BlockDeviceMappings:
+      - DeviceName: /dev/sda
+        Ebs:
+          VolumeType: gp2
+          DeleteOnTermination: true
+          VolumeSize: !Ref DiskSize
+          Encrypted: true
       Tags:
       - Key: Name
         Value: !FindInMap [ Tags, App, Value ]
@@ -134,13 +145,18 @@ Resources:
           # non-interactive upgrade
           DEBIAN_FRONTEND=noninteractive apt-get -y -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" upgrade
 
+          # setup dupin's storage
+          mkdir /dupin
+          mkfs -t ext4 /dev/sda
+          echo "/dev/sda  /dupin  ext4  defaults  0  0" >> /etc/fstab
+          mount -a
+
           # dupin's dependencies (building crypto libraries requires dev packages)
           apt-get install -y git python-pip python-dev libssl-dev libffi-dev
           pip install awscli
           pip install virtualenv
 
           # setup dupin directories
-          mkdir /dupin
           virtualenv /dupin/venv
           /dupin/venv/bin/pip install --upgrade pip
 
@@ -153,7 +169,7 @@ Resources:
           # fetch config
           aws s3 cp s3://${ConfigBucket}${ConfigPath} /dupin/config
 
-          chown -R ubuntu /dupin
+          chown -R ubuntu:ubuntu /dupin
 
           # run dupin setup
           su -c "/dupin/venv/bin/dupin --root /dupin setup" ubuntu
