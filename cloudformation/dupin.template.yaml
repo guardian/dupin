@@ -125,7 +125,7 @@ Resources:
         GroupSet:
         - Ref: DupinInstanceSecurityGroup
       BlockDeviceMappings:
-      - DeviceName: /dev/sda
+      - DeviceName: /dev/sdm
         Ebs:
           VolumeType: gp2
           DeleteOnTermination: true
@@ -147,8 +147,8 @@ Resources:
 
           # setup dupin's storage
           mkdir /dupin
-          mkfs -t ext4 /dev/sda
-          echo "/dev/sda  /dupin  ext4  defaults  0  0" >> /etc/fstab
+          mkfs -t ext4 /dev/xvdm
+          echo "/dev/xvdm  /dupin  ext4  defaults  0  0" >> /etc/fstab
           mount -a
 
           # dupin's dependencies (building crypto libraries requires dev packages)
