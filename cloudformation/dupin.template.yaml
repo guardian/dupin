@@ -185,7 +185,7 @@ Resources:
           UPDATEREPOLIST
 
           # initial update of organisation repos
-          su -c "/dupin/venv/bin/dupin --root /dupin update-repos" ubuntu
+          su -c "/dupin/venv/bin/dupin --root /dupin update-repos > /dupin/update-lastrun.log 2>&1" ubuntu
 
           # enable automatic patching of instance
           cat <<UPDATES > /etc/apt/apt.conf.d/20auto-upgrades

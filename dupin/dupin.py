@@ -1,9 +1,13 @@
 import argparse
+import datetime
 import os
 import sys
+import traceback
+from textwrap import dedent
 
 from scanner import scan_repo, scan_repo_list
 from organisation import update_organisation_repos
+from emails import send_email_properly
 from history import history
 from setup import setup
 from config import Config
@@ -47,59 +51,75 @@ auto_parser.add_argument("--notify", action="store_true", help="Send notificatio
 
 
 def main():
-    opts = parser.parse_args()
+    try:
+        opts = parser.parse_args()
 
-    # shared settings
-    if opts.root:
-        root = opts.root
-    else:
-        root = os.getcwd()
-
-    if opts.config:
-        config = Config(opts.config)
-    else:
-        default_config = os.path.join(root, "config")
-        if os.path.isfile(default_config):
-            config = Config(default_config)
+        # shared settings
+        if opts.root:
+            root = opts.root
         else:
-            config = Config()
+            root = os.getcwd()
 
-    # subcommands
-    if "setup" == opts.subcommand:
-        setup(root)
-    elif "update-repos" == opts.subcommand:
-        org = opts.org or config.organisation_name
-        repo_exclusions = opts.repo_exclusions or config.repo_exclusions
-        if org is None:
-            update_repos_parser.print_help()
-            sys.exit(1)
-        token = opts.token or config.github_token
-        include_forks = opts.include_forks or config.include_forks or False
-        if opts.file is None:
-            filename = os.path.join(root, "repository-urls")
+        if opts.config:
+            config = Config(opts.config)
         else:
-            filename = opts.file
+            default_config = os.path.join(root, "config")
+            if os.path.isfile(default_config):
+                config = Config(default_config)
+            else:
+                config = Config()
 
-        update_organisation_repos(org, token, filename, repo_exclusions, include_forks)
-    elif "scan-repo" == opts.subcommand:
-        repo_location = opts.location
-        scan_repo(repo_location, root)
-    elif "scan-repo-list" == opts.subcommand:
-        if opts.file is None:
+        # subcommands
+        if "setup" == opts.subcommand:
+            setup(root)
+        elif "update-repos" == opts.subcommand:
+            org = opts.org or config.organisation_name
+            repo_exclusions = opts.repo_exclusions or config.repo_exclusions
+            if org is None:
+                update_repos_parser.print_help()
+                sys.exit(1)
+            token = opts.token or config.github_token
+            include_forks = opts.include_forks or config.include_forks or False
+            if opts.file is None:
+                filename = os.path.join(root, "repository-urls")
+            else:
+                filename = opts.file
+
+            update_organisation_repos(org, token, filename, repo_exclusions, include_forks)
+        elif "scan-repo" == opts.subcommand:
+            repo_location = opts.location
+            scan_repo(repo_location, root)
+        elif "scan-repo-list" == opts.subcommand:
+            if opts.file is None:
+                repo_urls_filename = os.path.join(root, "repository-urls")
+            else:
+                repo_urls_filename = opts.file
+
+            scan_repo_list(repo_urls_filename, root)
+        elif "history" == opts.subcommand:
+            history_message = opts.message or "Dupin search results"
+
+            history(root, history_message, opts.notify, config)
+        elif "auto-scan-all" == opts.subcommand:
             repo_urls_filename = os.path.join(root, "repository-urls")
-        else:
-            repo_urls_filename = opts.file
 
-        scan_repo_list(repo_urls_filename, root)
-    elif "history" == opts.subcommand:
-        history_message = opts.message or "Dupin search results"
-
-        history(root, history_message, opts.notify, config)
-    elif "auto-scan-all" == opts.subcommand:
-        repo_urls_filename = os.path.join(root, "repository-urls")
-
-        scan_repo_list(repo_urls_filename, root)
-        history(root, "Dupin search results", opts.notify, config)
+            scan_repo_list(repo_urls_filename, root)
+            history(root, "Dupin search results", opts.notify, config)
+    except:
+        if config.smtp_configured():
+            stacktrace = traceback.format_exc().splitlines()
+            message = dedent("""\
+                Dupin failed during execution of {operation}
+                
+                Failed at: {timestamp}
+                Exception details:
+                {stacktrace}""").format(
+                    operation=opts.subcommand,
+                    stacktrace="\n".join(stacktrace),
+                    timestamp=datetime.datetime.now().isoformat()
+                )
+            send_email_properly(message, config.notification_email, config.smtp_from, config.smtp_host, config.smtp_username, config.smtp_password)
+        traceback.print_exc(file=sys.stderr)
     return
 
 if __name__ == "__main__":

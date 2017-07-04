@@ -18,6 +18,7 @@ import shutil
 import stat
 import sys
 import tempfile
+import traceback
 from git import Repo
 from git.diff import NULL_TREE
 
@@ -124,12 +125,13 @@ def truncate(string, length, ellipsis=" [...]"):
 
 def find_strings(repo, output_file=sys.stdout):
     already_searched = set()
-    for remote_branch in itertools.chain(["origin/master"], repo.remotes.origin.fetch()):
+    for remote_branch in set(itertools.chain(["origin/master"], repo.remotes.origin.fetch())):
         branch_name = str(remote_branch).split('/')[1]
         try:
             repo.git.checkout(remote_branch, b=branch_name)
         except:
             print("Failed to check out {branch}".format(branch=remote_branch), file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             continue
         for commit in repo.iter_commits():
             hash = str(commit)
