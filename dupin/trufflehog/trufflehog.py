@@ -126,9 +126,10 @@ def truncate(string, length, ellipsis=" [...]"):
 def find_strings(repo, output_file=sys.stdout):
     already_searched = set()
     for remote_branch in set(itertools.chain(["origin/master"], repo.remotes.origin.fetch())):
-        branch_name = str(remote_branch).split('/')[1]
+        branch_name = remote_branch
         try:
-            repo.git.checkout(remote_branch, b=branch_name)
+            branch_name = str(remote_branch).split('/')[1]
+            repo.git.checkout(remote_branch)
         except:
             print("Failed to check out {branch}".format(branch=remote_branch), file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
